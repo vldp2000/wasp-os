@@ -23,10 +23,10 @@ class PMS:
         asyncio.create_task(self.loop())
 
     async def loop(self):
+        await asyncio.sleep(15)
         while True:
             self.log.debug("loop")
             try:
-                await asyncio.sleep(10)
                 await self._keep_awake_event.wait()
                 self.wasp.sleep()
                 machine.lightsleep(300000)
@@ -37,8 +37,11 @@ class PMS:
                     self.keep_awake()
                 elif reason == 4:
                     await self.wasp.wake(by_user=False)
+                    self.keep_awake(True, 15000)
             except Exception as e:
                 self.log.exc(e, "loop")
+
+
 
     def keep_awake(self, value=True, time=None):
         awake_time = self._awake_time
