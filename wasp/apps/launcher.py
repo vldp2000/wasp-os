@@ -7,6 +7,8 @@
 
 import wasp
 import icons
+import widgets
+
 
 class LauncherApp():
     """An application launcher application.
@@ -15,7 +17,7 @@ class LauncherApp():
     ICON = icons.app
 
     def __init__(self):
-        self._scroll = wasp.widgets.ScrollIndicator(y=6)
+        self._scroll = widgets.ScrollIndicator(y=6)
 
     def foreground(self):
         """Activate the application."""
@@ -31,7 +33,7 @@ class LauncherApp():
             i += 1
             if i >= n:
                 i -= 1
-                wasp.watch.vibrator.pulse()
+                wasp.system.watch.vibrator.pulse()
                 return
         else:
             i -= 1
@@ -40,9 +42,9 @@ class LauncherApp():
                 return
 
         self._page = i
-        wasp.watch.display.mute(True)
+        wasp.system.watch.display.mute(True)
         self._draw()
-        wasp.watch.display.mute(False)
+        wasp.system.watch.display.mute(False)
 
     def touch(self, event):
         page = self._get_page(self._page)
@@ -52,7 +54,7 @@ class LauncherApp():
         if app:
             wasp.system.switch(app)
         else:
-            wasp.watch.vibrator.pulse()
+            wasp.system.watch.vibrator.pulse()
 
     @property
     def _num_pages(self):
@@ -77,7 +79,7 @@ class LauncherApp():
             draw.set_color(0xbdb6)
             draw.string(app.NAME, x, y+120-30, 120)
 
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         page_num = self._page
         page = self._get_page(page_num)
         

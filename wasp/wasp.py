@@ -6,7 +6,7 @@
 .. data:: wasp.system
 
     wasp.system is the system-wide singleton instance of :py:class:`.Manager`.
-    Application must use this instance to access the system services provided
+    Application must use this instance to access the system adapters provided
     by the manager.
 
 .. data:: wasp.watch
@@ -17,19 +17,20 @@
 
 import gc
 import machine
-import micropython
-import watch
-import widgets
+import sys
 
-from apps.clock import ClockApp
-from apps.flashlight import FlashlightApp
-from apps.heart import HeartApp
+from adapters.app import App
+from adapters.wifi import Wifi
+import watch
+import uasyncio as asyncio
+
+#from apps.flashlight import FlashlightApp
+#from apps.heart import HeartApp
 from apps.launcher import LauncherApp
-from apps.pager import PagerApp, CrashApp, NotificationApp
-from apps.settings import SettingsApp
-from apps.steps import StepCounterApp
-from apps.stopwatch import StopwatchApp
-from apps.testapp import TestApp
+from apps.pager import NotificationApp
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 class EventType():
     """Enumerated interface actions.
@@ -46,6 +47,7 @@ class EventType():
     HOME = 256
     BACK = 257
 
+
 class EventMask():
     """Enumerated event masks.
     """
@@ -54,42 +56,12 @@ class EventMask():
     SWIPE_UPDOWN = 0x0004
     BUTTON = 0x0008
 
-class PinHandler():
-    """Pin (and Signal) event generator.
-
-    TODO: Currently this driver doesn't actually implement any
-    debounce but it will!
-    """
-
-    def __init__(self, pin):
-        """
-        :param Pin pin: The pin to generate events from
-        """
-        self._pin = pin
-        self._value = pin.value()
-
-    def get_event(self):
-        """Receive a pin change event.
-
-        Check for a pending pin change event and, if an event is pending,
-        return it.
-
-        :return: boolean of the pin state if an event is received, None
-                 otherwise.
-        """
-        new_value = self._pin.value()
-        if self._value == new_value:
-            return None
-
-        self._value = new_value
-        return new_value
-
 class Manager():
     """Wasp-os system manager
 
     The manager is responsible for handling top-level UI events and
     dispatching them to the foreground application. It also provides
-    services to the application.
+    adapters to the application.
 
     The manager is expected to have a single system-wide instance
     which can be accessed via :py:data:`wasp.system` .
@@ -99,24 +71,36 @@ class Manager():
         self.app = None
 
         self.quick_ring = []
-        self.launcher = LauncherApp()
+        self.launcher = App(LauncherApp())
         self.launcher_ring = []
-        self.notifier = NotificationApp()
+        self.notifier = App(NotificationApp())
         self.notifications = {}
 
         self.blank_after = 15
 
         self._brightness = 2
-        self._button = PinHandler(watch.button)
         self._charging = True
         self._scheduled = False
         self._scheduling = False
+        self.watch = watch.Watch(self._handle_touch)
+        self.log = logging.getLogger('wasp')
+        self.network_service = Wifi()
+        self.event_mask = 0
+        self.awake = asyncio.Event()
 
-        # TODO: Eventually these should move to main.py
+    def init_apps(self):
+        from apps.settings import SettingsApp
+        from apps.clock import ClockApp
+        from apps.flashlight import FlashlightApp
+        # from apps.steps import StepCounterApp
+        from apps.stopwatch import StopwatchApp
+        from apps.testapp import TestApp
+
         self.register(ClockApp(), True)
-        self.register(StepCounterApp(), True)
+        #self.register(StepCounterApp(), True)
         self.register(StopwatchApp(), True)
-        self.register(HeartApp(), True)
+        #self.register(HeartApp(), True)
+
         self.register(FlashlightApp(), False)
         self.register(SettingsApp(), False)
         self.register(TestApp(), False)
@@ -127,10 +111,10 @@ class Manager():
         :param object app: The application to regsister
         """
         if quick_ring == True:
-            self.quick_ring.append(app)
+            self.quick_ring.append(App(app))
         else:
-            self.launcher_ring.append(app)
-            self.launcher_ring.sort(key = lambda x: x.NAME)
+            self.launcher_ring.append(App(app))
+            self.launcher_ring.sort(key=lambda x: x.NAME)
 
     @property
     def brightness(self):
@@ -140,7 +124,7 @@ class Manager():
     @brightness.setter
     def brightness(self, value):
         self._brightness = value
-        watch.backlight.set(self._brightness)
+        self.watch.backlight.set(value)
 
     def switch(self, app):
         """Switch to the requested application.
@@ -150,21 +134,18 @@ class Manager():
                 self.app.background()
         else:
             # System start up...
-            watch.display.poweron()
-            watch.display.mute(True)
-            watch.backlight.set(self._brightness)
-            self.sleep_at = watch.rtc.uptime + 90
+            self.watch.display.poweron()
+            self.watch.display.mute(True)
+            self.watch.backlight.set(self._brightness)
 
         # Clear out any configuration from the old application
         self.event_mask = 0
-        self.tick_period_ms = 0
-        self.tick_expiry = None
 
         self.app = app
-        watch.display.mute(True)
-        watch.drawable.reset()
+        self.watch.display.mute(True)
+        self.watch.drawable.reset()
         app.foreground()
-        watch.display.mute(False)
+        self.watch.display.mute(False)
 
     def navigate(self, direction=None):
         """Navigate to a new application.
@@ -209,13 +190,13 @@ class Manager():
                 else:
                     # Nothing to notify... we must handle that here
                     # otherwise the display will flicker.
-                    watch.vibrator.pulse()
+                    self.watch.vibrator.pulse()
 
         elif direction == EventType.HOME or direction == EventType.BACK:
             if self.app != app_list[0]:
                 self.switch(app_list[0])
             else:
-                self.sleep()
+                self.pms.keep_awake(False)
 
     def notify(self, id, msg):
         self.notifications[id] = msg
@@ -233,44 +214,55 @@ class Manager():
 
     def request_tick(self, period_ms=None):
         """Request (and subscribe to) a periodic tick event.
-
         Note: With the current simplistic timer implementation sub-second
         tick intervals are not possible.
         """
-        self.tick_period_ms = period_ms
-        self.tick_expiry = watch.rtc.get_uptime_ms() + period_ms
+        self.app._fg_period = period_ms
 
-    def keep_awake(self):
-        """Reset the keep awake timer."""
-        self.sleep_at = watch.rtc.uptime + self.blank_after
+    async def on_net(self):
+        self.watch.rtc.sync_time()
+        await asyncio.sleep(1)
 
     def sleep(self):
         """Enter the deepest sleep state possible.
         """
-        watch.backlight.set(0)
-        if 'sleep' not in dir(self.app) or not self.app.sleep():
-            self.switch(self.quick_ring[0])
-            self.app.sleep()
-        watch.display.poweroff()
-        watch.touch.sleep()
-        self._charging = watch.battery.charging()
-        self.sleep_at = None
+        self.awake.clear()
+        self.log.debug("Sleep")
+        self.watch.backlight.set(0)
+        self.app.background()
+        self.watch.display.poweroff()
+        #self.watch.touch.sleep()
+        self.network_service.sleep()
+        self._charging = self.watch.axp.isChargeing()
 
-    def wake(self):
+    async def wake(self, by_user):
         """Return to a running state.
         """
-        watch.display.poweron()
-        if 'wake' in dir(self.app):
-            self.app.wake()
-        watch.backlight.set(self._brightness)
-        watch.touch.wake()
+        self.log.debug("wake: "+str(by_user))
+        if by_user:
+            self.awake.set()
+            self.watch.display.poweron()
+            self.watch.backlight.set(self._brightness)
+            self.app.foreground()
+            #self.watch.touch.wake()
+        else:
+            await self.connect()
 
-        self.keep_awake()
+    async def connect(self):
+        await self.network_service.wake()
+        if self.network_service.isconnected():
+            await self.on_net()
+        self.network_service.sleep()
 
-    def _handle_button(self, state):
+    def handle_button(self, state):
         """Process a button-press (or unpress) event.
         """
+        print("handle")
+        self.log.debug("handle_button")
         self.keep_awake()
+        if not self.awake.is_set():
+            asyncio.create_task(self.wake(by_user=True))
+            return
 
         if bool(self.event_mask & EventMask.BUTTON):
             # Currently we only support one button
@@ -280,6 +272,9 @@ class Manager():
 
         if state:
             self.navigate(EventType.HOME)
+
+    def keep_awake(self):
+        self.pms.keep_awake()
 
     def _handle_touch(self, event):
         """Process a touch event.
@@ -297,115 +292,31 @@ class Manager():
                 self.navigate(event[0])
         elif event[0] == 5 and self.event_mask & EventMask.TOUCH:
             self.app.touch(event)
-        watch.touch.reset_touch_data()
-
-    def _tick(self):
-        """Handle the system tick.
-
-        This function may be called frequently and includes short
-        circuit logic to quickly exit if we haven't reached a tick
-        expiry point.
-        """
-        rtc = watch.rtc
-
-        if self.sleep_at:
-            if rtc.update() and self.tick_expiry:
-                now = rtc.get_uptime_ms()
-
-                if self.tick_expiry <= now:
-                    ticks = 0
-                    while self.tick_expiry <= now:
-                        self.tick_expiry += self.tick_period_ms
-                        ticks += 1
-                    self.app.tick(ticks)
-
-            state = self._button.get_event()
-            if None != state:
-                self._handle_button(state)
-
-            event = watch.touch.get_event()
-            if event:
-                self._handle_touch(event)
-
-            if self.sleep_at and watch.rtc.uptime > self.sleep_at:
-                self.sleep()
-
-            gc.collect()
-        else:
-            watch.rtc.update()
-
-            if 1 == self._button.get_event() or \
-                    self._charging != watch.battery.charging():
-                self.wake()
+        self.watch.touch.reset_touch_data()
 
     def run(self, no_except=True):
-        """Run the system manager synchronously.
 
-        This allows all watch management activities to handle in the
-        normal execution context meaning any exceptions and other problems
-        can be observed interactively via the console.
-        """
-        if self._scheduling:
-            print('Watch already running in the background')
-            return
-
-        if not self.app:
-            self.switch(self.quick_ring[0])
-
-        # Reminder: wasptool uses this string to confirm the device has
-        # been set running again.
-        print('Watch is running, use Ctrl-C to stop')
-
-        if not no_except:
-            # This is a simplified (uncommented) version of the loop
-            # below
-            while True:
-                self._tick()
-                machine.deepsleep()
-
-        while True:
-            try:
-                self._tick()
-            except KeyboardInterrupt:
-                raise
-            except Exception as e:
-                # Only print the exception if the watch provides a way to do so!
-                if 'print_exception' in dir(watch):
-                    watch.print_exception(e)
-                self.switch(CrashApp(e))
-
-            # Currently there is no code to control how fast the system
-            # ticks. In other words this code will break if we improve the
-            # power management... we are currently relying on not being able
-            # to stay in the low-power state for very long.
-            machine.deepsleep()
-
-    def _work(self):
-        self._scheduled = False
         try:
-            self._tick()
+            asyncio.run(self.main_loop())
         except Exception as e:
-            # Only print the exception if the watch provides a way to do so!
-            if 'print_exception' in dir(watch):
-                watch.print_exception(e)
-            self.switch(CrashApp(e))
+            with open("reset_reason.txt", "w") as f:
+                f.write(str(e))
+            sys.print_exception(e)
+            machine.reset()
 
-    def _schedule(self):
-        """Asynchronously schedule a system management cycle."""
-        if not self._scheduled:
-            self._scheduled = True
-            micropython.schedule(Manager._work, self)
-
-    def schedule(self, enable=True):
-        """Run the system manager synchronously."""
+    async def main_loop(self):
+        from adapters.power_management_service import PMS
+        self.pms = PMS(self.blank_after)
+        self.init_apps()
         if not self.app:
             self.switch(self.quick_ring[0])
+        asyncio.create_task(self.connect())
+        self.pms.init()
+        self.keep_awake()
+        while True:
+            gc.collect()
+            gc.threshold(gc.mem_free() // 4 + gc.mem_alloc())
+            await asyncio.sleep(5)
 
-        if enable:
-            watch.schedule = self._schedule
-        else:
-            watch.schedule = watch.nop
-
-        self._scheduling = enable
 
 system = Manager()

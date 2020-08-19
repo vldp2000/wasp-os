@@ -7,10 +7,11 @@
 Shows a time (as HH:MM) together with a battery meter and the date.
 """
 
-import wasp
+from wasp import system as wasp
 
 import icons
 import fonts.clock as digits
+from widgets import BatteryMeter
 
 DIGITS = (
         digits.clock_0,
@@ -34,14 +35,15 @@ class ClockApp():
     ICON = icons.clock
 
     def __init__(self):
-        self.meter = wasp.widgets.BatteryMeter()
-        self.notifier = wasp.widgets.StatusBar()
+        super().__init__()
+        self.meter = BatteryMeter()
+        #self.notifier = wasp.widgets.StatusBar()
 
     def foreground(self):
         """Activate the application."""
         self.on_screen = ( -1, -1, -1, -1, -1, -1 )
         self.draw()
-        wasp.system.request_tick(1000)
+        wasp.request_tick(1000)
 
     def sleep(self):
         return True
@@ -69,10 +71,11 @@ class ClockApp():
         draw() to ensure the screen is suitably prepared.
         """
         now = wasp.watch.rtc.get_localtime()
+        print(now)
         if now[3] == self.on_screen[3] and now[4] == self.on_screen[4]:
             if now[5] != self.on_screen[5]:
-                self.meter.update()
-                self.notifier.update()
+                #self.meter.update()
+                #self.notifier.update()
                 self.on_screen = now
             return False
 
@@ -89,5 +92,5 @@ class ClockApp():
                 0, 180, width=240)
 
         self.meter.update()
-        self.notifier.update()
+        #self.notifier.update()
         return True

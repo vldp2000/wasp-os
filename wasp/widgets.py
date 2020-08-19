@@ -9,10 +9,8 @@ shared between applications.
 """
 
 import icons
-import wasp
-import watch
 from micropython import const
-
+import wasp
 class BatteryMeter:
     """Battery meter widget.
 
@@ -33,14 +31,14 @@ class BatteryMeter:
         The update is lazy and won't redraw unless the level has changed.
         """
         icon = icons.battery
-        draw = watch.drawable
+        draw = wasp.system.watch.drawable
 
-        if watch.battery.charging():
+        if wasp.system.watch.battery.charging():
             if self.level != -1:
                 draw.rleblit(icon, pos=(239-icon[0], 0), fg=0x7bef)
                 self.level = -1
         else:
-            level = watch.battery.level()
+            level = wasp.system.watch.battery.level()
             if level == self.level:
                 return
 
@@ -84,12 +82,13 @@ class StatusBar:
         self.update()
 
     def update(self):
+
         """Update the widget.
         """
-        draw = watch.drawable
+        draw = wasp.system.watch.drawable
         (x, y) = self._pos
 
-        if wasp.watch.connected():
+        if wasp.system.watch.connected():
             draw.blit(icons.blestatus, x, y, fg=0x7bef)
             if wasp.system.notifications:
                 draw.blit(icons.notification, x+24, y, fg=0x7bef)
@@ -122,6 +121,7 @@ class ScrollIndicator:
 
     def update(self):
         """Update from scrolling indicator."""
+        watch = wasp.system.watch
         draw = watch.drawable
         if self.up:
             draw.rleblit(icons.up_arrow, pos=self._pos, fg=0x7bef)
@@ -157,6 +157,7 @@ class Slider():
 
     def draw(self):
         """Draw the slider."""
+        watch = wasp.system.watch
         draw = watch.drawable
         x = self._x
         y = self._y

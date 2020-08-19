@@ -9,6 +9,8 @@ import time
 import watch
 
 # 2-bit RLE, generated from res/feet.png, 240 bytes
+import widgets
+
 feet = (
     b'\x02'
     b'00'
@@ -35,7 +37,7 @@ class StepCounterApp():
 
     def __init__(self):
         watch.accel.reset()
-        self._meter = wasp.widgets.BatteryMeter()
+        self._meter = widgets.BatteryMeter()
         self._count = 0
         self._last_clock = ( -1, -1, -1, -1, -1, -1 )
 
@@ -54,7 +56,7 @@ class StepCounterApp():
 
     def _draw(self):
         """Draw the display from scratch."""
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         draw.fill()
         draw.blit(feet, 12, 132-24)
 
@@ -63,10 +65,10 @@ class StepCounterApp():
         self._meter.draw()
 
     def _update(self):
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
 
         # Lazy update of the clock and battery meter
-        now = wasp.watch.rtc.get_localtime()
+        now = wasp.system.watch.rtc.get_localtime()
         if now[4] != self._last_clock[4]:
             t1 = '{:02}:{:02}'.format(now[3], now[4])
             draw.set_font(fonts.sans28)

@@ -65,12 +65,12 @@ class TemplateApp():
 
     def press(self, button, state):
         """Notify the application of a button-press event."""
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         draw.string('Button', 0, 108, width=240)
 
     def swipe(self, event):
         """Notify the application of a touchscreen swipe event."""
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         if event[0] == wasp.EventType.UP:
             draw.string('Swipe up', 0, 108, width=240)
         else:
@@ -82,13 +82,13 @@ class TemplateApp():
 
     def touch(self, event):
         """Notify the application of a touchscreen touch event."""
-        draw = wasp.watch.drawable
-        wasp.watch.drawable.string('({}, {})'.format(
+        draw = wasp.system.watch.drawable
+        wasp.system.watch.drawable.string('({}, {})'.format(
                 event[1], event[2]), 0, 108, width=240)
 
     def _draw(self):
         """Draw the display from scratch."""
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         draw.fill()
         draw.string(self.NAME, 0, 6, width=240)
         self._update()

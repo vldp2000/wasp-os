@@ -8,6 +8,8 @@
 import machine
 import wasp
 import icons
+import widgets
+
 
 class TestApp():
     """Simple test application.
@@ -18,12 +20,12 @@ class TestApp():
     def __init__(self):
         self.tests = ('Button', 'Crash', 'Colours', 'Fill', 'Fill-H', 'Fill-V', 'Notifications', 'RLE', 'String', 'Touch', 'Wrap')
         self.test = self.tests[0]
-        self.scroll = wasp.widgets.ScrollIndicator()
+        self.scroll = widgets.ScrollIndicator()
 
         self._sliders = (
-                wasp.widgets.Slider(32, 10, 90, 0xf800),
-                wasp.widgets.Slider(64, 10, 140, 0x27e4),
-                wasp.widgets.Slider(32, 10, 190, 0x211f),
+                widgets.Slider(32, 10, 90, 0xf800),
+                widgets.Slider(64, 10, 140, 0x27e4),
+                widgets.Slider(32, 10, 190, 0x211f),
         )
 
     def foreground(self):
@@ -35,7 +37,7 @@ class TestApp():
                                   wasp.EventMask.BUTTON)
 
     def press(self, button, state):
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         if self.test == 'Button':
             draw.string('{}: {}'.format(button, state), 0, 108, width=240)
         elif self.test == 'Crash':
@@ -72,8 +74,8 @@ class TestApp():
             self._benchmark_fill()
         elif self.test == 'Notifications':
             if event[1] < 120:
-                wasp.system.notify(wasp.watch.rtc.get_uptime_ms(),
-                    {
+                wasp.system.notify(wasp.system.watch.rtc.get_uptime_ms(),
+                                   {
                         "src":"Hangouts",
                         "title":"A Name",
                         "body":"message contents"
@@ -88,13 +90,13 @@ class TestApp():
         elif self.test == 'String':
             self._benchmark_string()
         elif self.test == 'Touch':
-            wasp.watch.drawable.string('({}, {})'.format(
+            wasp.system.watch.drawable.string('({}, {})'.format(
                     event[1], event[2]), 0, 108, width=240)
         elif self.test == 'Wrap':
             self._benchmark_wrap()
 
     def _benchmark_rle(self):
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         draw.fill(0, 0, 30, 240, 240-30)
         self.scroll.draw()
         t = machine.Timer(id=1, period=8000000)
@@ -107,7 +109,7 @@ class TestApp():
         draw.string('{}s'.format(elapsed / 1000000), 12, 24+192)
 
     def _benchmark_fill(self):
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         draw.fill(0, 0, 30, 240, 240-30)
         self.scroll.draw()
         t = machine.Timer(id=1, period=8000000)
@@ -131,7 +133,7 @@ class TestApp():
         draw.string('{}s'.format(elapsed / 1000000), 12, 24+192)
 
     def _benchmark_string(self):
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         draw.fill(0, 0, 30, 240, 240-30)
         self.scroll.draw()
         t = machine.Timer(id=1, period=8000000)
@@ -147,12 +149,12 @@ class TestApp():
         draw.string('{}s'.format(elapsed / 1000000), 12, 24+192)
 
     def _benchmark_wrap(self):
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         draw.fill(0, 0, 30, 240, 240-30)
         self.scroll.draw()
         t = machine.Timer(id=1, period=8000000)
         t.start()
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         s = 'This\nis a very long string that will need to be wrappedinmultipledifferentways!'
         chunks = draw.wrap(s, 240)
 
@@ -166,8 +168,8 @@ class TestApp():
 
     def _draw(self):
         """Redraw the display from scratch."""
-        wasp.watch.display.mute(True)
-        draw = wasp.watch.drawable
+        wasp.system.watch.display.mute(True)
+        draw = wasp.system.watch.drawable
         draw.fill()
         draw.string('{} test'.format(self.test),
                 0, 6, width=240)
@@ -187,10 +189,10 @@ class TestApp():
             draw.blit(self.ICON, 120-48, 120-32)
 
         self.scroll.draw()
-        wasp.watch.display.mute(False)
+        wasp.system.watch.display.mute(False)
 
     def _update_colours(self):
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         r = self._sliders[0].value
         g = self._sliders[1].value
         b = self._sliders[2].value
@@ -200,4 +202,4 @@ class TestApp():
         draw.fill(rgb, 60, 35, 120, 50)
 
     def _update_notifications(self):
-        wasp.watch.drawable.string(str(len(wasp.system.notifications)), 0, 140, 240)
+        wasp.system.watch.drawable.string(str(len(wasp.system.notifications)), 0, 140, 240)

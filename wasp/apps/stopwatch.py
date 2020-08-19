@@ -4,13 +4,14 @@
 import wasp
 import icons
 import fonts
+import widgets
 
 class StopwatchApp():
     NAME = 'Timer'
     ICON = icons.app
 
     def __init__(self):
-        self._meter = wasp.widgets.BatteryMeter()
+        self._meter = widgets.BatteryMeter()
         self._reset()
         self._count = 0
 
@@ -37,7 +38,7 @@ class StopwatchApp():
             self._update()
             self._started_at = 0
         else:
-            uptime = wasp.watch.rtc.get_uptime_ms()
+            uptime = wasp.system.watch.rtc.get_uptime_ms()
             uptime //= 10
             self._started_at = uptime - self._count
             self._update()
@@ -54,7 +55,7 @@ class StopwatchApp():
 
         self._draw_splits()
 
-    def tick(self, ticks):
+    def tick(self, ticks, foreground=True):
         self._update()
 
     def _reset(self):
@@ -65,7 +66,7 @@ class StopwatchApp():
         self._nsplits = 0
 
     def _draw_splits(self):
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         splits = self._splits
         if 0 == len(splits):
             draw.fill(0, 0, 120, 240, 120)
@@ -90,7 +91,7 @@ class StopwatchApp():
 
     def _draw(self):
         """Draw the display from scratch."""
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         draw.fill()
 
         self._last_count = -1
@@ -98,20 +99,20 @@ class StopwatchApp():
         self._meter.draw()
         self._draw_splits()
 
-    def _update(self):
+    def _update(self, foreground=True):
         # Before we do anything else let's make sure _count is
         # up to date
         if self._started_at:
-            uptime = wasp.watch.rtc.get_uptime_ms()
+            uptime = wasp.system.watch.rtc.get_uptime_ms()
             uptime //= 10
             self._count = uptime - self._started_at
             if self._count > 999*60*100:
                 self._reset()
 
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
 
         # Lazy update of the clock and battery meter
-        now = wasp.watch.rtc.get_localtime()
+        now = wasp.system.watch.rtc.get_localtime()
         if now[4] != self._last_clock[4]:
             t1 = '{:02}:{:02}'.format(now[3], now[4])
             draw.set_font(fonts.sans28)

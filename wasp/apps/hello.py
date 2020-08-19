@@ -14,6 +14,6 @@ class HelloApp():
         self._draw()
 
     def _draw(self):
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         draw.fill()
         draw.string(self.msg, 0, 108, width=240)

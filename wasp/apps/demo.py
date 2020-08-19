@@ -253,7 +253,7 @@ class DemoApp():
 
     def _draw(self):
         """Draw the next frame."""
-        draw = wasp.watch.drawable
+        draw = wasp.Watch.drawable
 
         if self._i < 5:
             self._i += 1

@@ -15,6 +15,9 @@ import icons
 import io
 import sys
 
+import widgets
+
+
 class PagerApp():
     """Show a long text message in a pager."""
     NAME = 'Pager'
@@ -22,7 +25,7 @@ class PagerApp():
 
     def __init__(self, msg):
         self._msg = msg
-        self._scroll = wasp.widgets.ScrollIndicator()
+        self._scroll = widgets.ScrollIndicator()
 
     def foreground(self):
         """Activate the application."""
@@ -36,7 +39,7 @@ class PagerApp():
 
     def swipe(self, event):
         """Swipe to page up/down."""
-        mute = wasp.watch.display.mute
+        mute = wasp.system.watch.display.mute
 
         if event[0] == wasp.EventType.UP:
             if self._page >= self._numpages:
@@ -45,7 +48,7 @@ class PagerApp():
             self._page += 1
         else:
             if self._page <= 0:
-                wasp.watch.vibrator.pulse()
+                wasp.system.watch.vibrator.pulse()
                 return
             self._page -= 1
         mute(True)
@@ -55,13 +58,13 @@ class PagerApp():
     def _redraw(self):
         """Redraw from scratch (jump to the first page)"""
         self._page = 0
-        self._chunks = wasp.watch.drawable.wrap(self._msg, 240)
+        self._chunks = wasp.system.watch.drawable.wrap(self._msg, 240)
         self._numpages = (len(self._chunks) - 2) // 9
         self._draw()
 
     def _draw(self):
         """Draw a page from scratch."""
-        draw = wasp.watch.drawable
+        draw = wasp.system.watch.drawable
         draw.fill()
 
         page = self._page
@@ -120,8 +123,8 @@ class CrashApp():
         If you owned an Atari ST back in the mid-eighties then I hope you
         recognise this as a tribute a long forgotten home computer!
         """
-        wasp.watch.display.invert(False)
-        draw = wasp.watch.drawable
+        wasp.system.watch.display.invert(False)
+        draw = wasp.system.watch.drawable
         draw.blit(icons.bomb, 0, 104)
         draw.blit(icons.bomb, 32, 104)
 
@@ -134,8 +137,8 @@ class CrashApp():
         Conceal the display before the transition otherwise the inverted
         bombs get noticed by the user.
         """
-        wasp.watch.display.mute(True)
-        wasp.watch.display.invert(True)
+        wasp.system.watch.display.mute(True)
+        wasp.system.watch.display.invert(True)
 
     def swipe(self, event):
         """Show the exception message in a pager."""

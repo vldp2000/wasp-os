@@ -196,7 +196,7 @@ class GameOfLifeApp():
 
     def _draw(self):
         """Draw the display from scratch."""
-        wasp.watch.drawable.fill()
+        wasp.Watch.drawable.fill()
         board = self._board
         for i in range(len(board)):
             board[i] = 0
@@ -209,7 +209,7 @@ class GameOfLifeApp():
         self._board = nb
         self._next_board = b
 
-        display = wasp.watch.display
+        display = wasp.Watch.display
         lb = display.linebuffer
         alive = memoryview(lb)[0:2*16]
         self._color = xorshift12(self._color)

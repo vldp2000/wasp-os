@@ -13,28 +13,28 @@ class HeartApp():
 
     def foreground(self):
         """Activate the application."""
-        wasp.watch.hrs.enable()
+        wasp.Watch.hrs.enable()
 
         # There is no delay after the enable because the redraw should
         # take long enough it is not needed
-        draw = wasp.watch.drawable
+        draw = wasp.Watch.drawable
         draw.fill()
         draw.string('PPG graph', 0, 6, width=240)
 
         wasp.system.request_tick(1000 // 8)
 
-        self._hrdata = ppg.PPG(wasp.watch.hrs.read_hrs())
+        self._hrdata = ppg.PPG(wasp.Watch.hrs.read_hrs())
         self._x = 0
 
     def background(self):
-        wasp.watch.hrs.disable()
+        wasp.Watch.hrs.disable()
         del self._hrdata
 
     def _subtick(self, ticks):
         """Notify the application that its periodic tick is due."""
-        draw = wasp.watch.drawable
+        draw = wasp.Watch.drawable
 
-        spl = self._hrdata.preprocess(wasp.watch.hrs.read_hrs())
+        spl = self._hrdata.preprocess(wasp.Watch.hrs.read_hrs())
 
         if len(self._hrdata.data) >= 240:
             draw.string('{} bpm'.format(self._hrdata.get_heart_rate()),

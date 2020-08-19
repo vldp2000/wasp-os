@@ -7,13 +7,15 @@ Currently the settings application contains only one setting: brightness
 
 import wasp
 import icons
+import widgets
+
 
 class SettingsApp():
     NAME = 'Settings'
     ICON = icons.settings
 
     def __init__(self):
-        self._slider = wasp.widgets.Slider(3, 10, 90)
+        self._slider = widgets.Slider(3, 10, 90)
 
     def foreground(self):
         self._draw()
@@ -26,8 +28,8 @@ class SettingsApp():
 
     def _draw(self):
         """Redraw the display from scratch."""
-        wasp.watch.drawable.fill()
-        wasp.watch.drawable.string('Brightness', 0, 6, width=240)
+        wasp.system.watch.drawable.fill()
+        wasp.system.watch.drawable.string('Brightness', 0, 6, width=240)
         self._update()
 
     def _update(self):
@@ -37,5 +39,5 @@ class SettingsApp():
             say = "Mid"
         else:
             say = "Low"
-        wasp.watch.drawable.string(say, 0, 150, width=240)
+        wasp.system.watch.drawable.string(say, 0, 150, width=240)
         self._slider.update()
