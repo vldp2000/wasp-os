@@ -15,6 +15,7 @@ import micropython
 
 from micropython import const
 from time import sleep_ms
+import ustruct as struct
 
 # register definitions
 _SWRESET            = const(0x01)
@@ -30,6 +31,15 @@ _RASET              = const(0x2b)
 _RAMWR              = const(0x2c)
 _COLMOD             = const(0x3a)
 _MADCTL             = const(0x36)
+_VSCSAD = const(0x37)
+
+_MADCTL_MY = const(0x80)
+_MADCTL_MX = const(0x40)
+_MADCTL_MV = const(0x20)
+_MADCTL_ML = const(0x10)
+_MADCTL_BGR = const(0x08)
+_MADCTL_MH = const(0x04)
+_MADCTL_RGB = const(0x00)
 
 class ST7789(object):
     """Sitronix ST7789 display driver
@@ -56,6 +66,7 @@ class ST7789(object):
 
         for cmd in (
             (_COLMOD,   b'\x05'), # MCU will send 16-bit RGB565
+            (_NORON, None),
             (_MADCTL,   b'\x00'), # Left to right, top to bottom
             #(_INVOFF,   None), # Results in odd palette
             (_INVON,   None),
@@ -64,6 +75,7 @@ class ST7789(object):
             self.write_cmd(cmd[0])
             if cmd[1]:
                 self.write_data(cmd[1])
+            sleep_ms(50)
         self.fill(0)
         self.write_cmd(_DISPON)
 
@@ -92,6 +104,51 @@ class ST7789(object):
             self.write_cmd(_INVON)
         else:
             self.write_cmd(_INVOFF)
+
+    def set_mem_access_mode(self, rotation, vert_mirror=False, horz_mirror=False, is_bgr=False):
+        rotation &= 7
+        value = {
+            0: 0,
+            1: _MADCTL_MX,
+            2: _MADCTL_MY,
+            3: _MADCTL_MX | _MADCTL_MY,
+            4: _MADCTL_MV,
+            5: _MADCTL_MV | _MADCTL_MX,
+            6: _MADCTL_MV | _MADCTL_MY,
+            7: _MADCTL_MV | _MADCTL_MX | _MADCTL_MY,
+        }[rotation]
+
+        if vert_mirror:
+            value |= _MADCTL_ML
+        elif horz_mirror:
+            value |= _MADCTL_MH
+
+        if is_bgr:
+            value |= _MADCTL_BGR
+
+        self.write_cmd(_MADCTL)
+        self.write_data(bytes([value]))
+        sleep_ms(50)
+
+    def rotate(self, n):
+        # rotate display colockwise n times
+        rotate = (n + 2) % 4
+        if rotate < 0:
+            rotate += 4
+        vs = 0
+        if rotate == 0:
+            self.set_mem_access_mode(0, False)
+        elif rotate == 2:
+            self.set_mem_access_mode(3)
+            vs = 80
+        elif rotate == 3:
+            self.set_mem_access_mode(5, True)
+        elif rotate == 1:
+            self.set_mem_access_mode(6)
+            vs = 80
+
+        self.write_cmd(_VSCSAD)
+        self.write_data(struct.pack(">H", vs))
 
     def mute(self, mute):
         """Mute the display.

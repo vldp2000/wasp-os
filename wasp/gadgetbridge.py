@@ -42,7 +42,7 @@ def GB(cmd):
 
     try:
         if task == 'find':
-            wasp.watch.vibrator.pin(not cmd['n'])
+            wasp.system.watch.vibrator.pin(not cmd['n'])
         elif task == 'notify':
             id = cmd['id']
             del cmd['id']
