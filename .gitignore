@@ -6,3 +6,4 @@ cscope.out
 docs/build
 attic/
 wasp/boards/*/watch.py
+wasp/fs/wifi.json
