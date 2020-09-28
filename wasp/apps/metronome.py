@@ -3,7 +3,6 @@
 
 """Metronome
 ~~~~~~~~~~~~~
-
 Produce the motor vibration using the specified tempo
 """
 
@@ -12,12 +11,10 @@ import icons
 import time
 import logging
 
-
 class MetronomeApp(object):
     """Metronome application."""
     NAME = 'Metronome'
     ICON = icons.bomb
-
     def __init__(self, play = False, tempo = 120, beats_per_measure = 4, number_of_measures = 4, accent = False):
         self.play = play
         self.tempo = tempo
