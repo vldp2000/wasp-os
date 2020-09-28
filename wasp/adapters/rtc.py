@@ -21,7 +21,7 @@ class RTC(object):
         yyyy = t[0]
         mm = t[1]
         dd = t[2]
-        HH = t[3]+2
+        HH = t[3]+10
         if HH>23:
             HH = 0+(HH-24)
         MM = t[4]
